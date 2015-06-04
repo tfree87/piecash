@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 from __future__ import division
 import datetime
 
+from pandas.io.data import DataReader
+
 from sqlalchemy import Column, VARCHAR, INTEGER, ForeignKey, BIGINT, Index, UniqueConstraint
 from sqlalchemy.orm import relation
 
@@ -232,15 +234,14 @@ class Commodity(DeclarativeBaseGuid):
             symbol = self.mnemonic
             default_currency = self.base_currency
 
-            # get historical data
-            yql = 'select Date, Close from yahoo.finance.historicaldata where ' \
-                  'symbol = "{}" ' \
-                  'and startDate = "{:%Y-%m-%d}" ' \
-                  'and endDate = "{:%Y-%m-%d}"'.format(symbol,
-                                                       start_date,
-                                                       datetime.date.today())
-            for q in run_yql(yql):
-                day, close = q.Date, q.Close
+            # get historical data from Yahoo! using pandas DataReader
+            commodity_data = DataReader(symbol,
+                                        "yahoo",
+                                        start_date,
+                                        datetime.date.today())
+            
+            for day in commodity_data:
+                close = commodity_data["Close"][day.strftime("%Y-%m-%d")]
                 Price(commodity=self,
                       currency=default_currency,
                       date=datetime.datetime.strptime(day, "%Y-%m-%d"),
